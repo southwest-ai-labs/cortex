@@ -1,8 +1,10 @@
 ---
+github_issue: 9
 title: "[FEATURE]: System 1 and 2 Implementation"
 labels: "enhancement, ai-plan, jules"
 assignees: ""
 ---
+github_issue: 9
 
 ## 💡 Feature Description
 Implement the foundation of the AgentRAG swarm: the Retriever (System 1) and Reasoner (System 2).

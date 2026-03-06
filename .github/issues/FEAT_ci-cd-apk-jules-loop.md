@@ -1,8 +1,10 @@
 ---
+github_issue: 8
 title: "[FEATURE]: APK Build and CI/CD Loop for Jules"
 labels: "enhancement, ai-plan, jules"
 assignees: ""
 ---
+github_issue: 8
 
 ## 💡 Feature Description
 Implement `cargo-ndk` scripts to build the Rust swarms into an Android APK, alongside a GitHub Action that acts as an auto-correction feedback loop for Jules.

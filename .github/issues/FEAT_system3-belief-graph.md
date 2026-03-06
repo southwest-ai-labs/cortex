@@ -1,8 +1,10 @@
 ---
+github_issue: 10
 title: "[FEATURE]: System 3 Belief Graph and Overseer"
 labels: "enhancement, ai-plan, jules"
 assignees: ""
 ---
+github_issue: 10
 
 ## 💡 Feature Description
 Implement the core innovation of AgentRAG: System 3 (Meta-Cognitive Overseer) and the Belief Graph in SurrealDB.
