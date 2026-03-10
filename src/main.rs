@@ -1,44 +1,74 @@
+use anyhow::Result;
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use std::{net::SocketAddr, sync::Arc};
+use surrealdb::{
+    engine::any::connect,
+    opt::auth::Root,
+};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 mod agents;
 mod memory;
+mod server;
 mod tools;
 
-use anyhow::Result;
-use surrealdb::engine::any::connect;
-use surrealdb::opt::auth::Root;
+use agents::{AgentRuntime, RuntimeConfig};
+use memory::{belief_graph::SharedBeliefGraph, qmd_memory::QmdMemory};
+
+#[derive(Clone)]
+pub(crate) struct AppState {
+    pub memory: QmdMemory,
+    pub runtime: Arc<AgentRuntime>,
+    pub belief_graph: SharedBeliefGraph,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("🧠 Initialize AgentRAG System 3 Swarm");
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
-    // Initialize SurrealDB connection pool
+    tracing::info!("Starting Cortex - Cognitive Memory System");
+
     let db = connect("ws://localhost:8000").await?;
     db.signin(Root {
-        username: "root",
-        password: "root",
-    }).await?;
+        username: "root".to_string(),
+        password: "root".to_string(),
+    })
+    .await?;
     db.use_ns("agentrag").use_db("system3").await?;
 
-    // Initialize QMD Hybrid Vector Memory Schema
-    println!("🛠️ Initializing QMD Hybrid Vector Memory schema...");
+    let memory = QmdMemory::new(Arc::new(db));
+    memory.init().await?;
 
-    // Create memory table
-    db.query("DEFINE TABLE memory SCHEMAFULL;").await?;
-    db.query("DEFINE FIELD path ON TABLE memory TYPE string;").await?;
-    db.query("DEFINE FIELD content ON TABLE memory TYPE string;").await?;
-    db.query("DEFINE FIELD metadata ON TABLE memory TYPE object FLEXIBLE;").await?;
-    db.query("DEFINE FIELD embedding ON TABLE memory TYPE array<float>;").await?;
+    let runtime = Arc::new(AgentRuntime::new(memory.clone(), RuntimeConfig::default()));
+    let belief_graph = Arc::new(tokio::sync::RwLock::new(
+        memory::belief_graph::BeliefGraph::new(),
+    ));
 
-    // Create Full-Text Search index (BM25)
-    db.query("DEFINE INDEX memory_content_index ON TABLE memory COLUMNS content SEARCH ANALYZER ascii BM25;").await?;
+    let state = AppState {
+        memory,
+        runtime,
+        belief_graph,
+    };
 
-    // Create Vector Search index (HNSW / MTree)
-    // Note: Vector definition in SurrealDB requires specific MTree or HNSW configuration based on dimensions.
-    // Example uses 1536 dims suitable for text-embedding-ada-002
-    db.query("DEFINE INDEX memory_embedding_index ON TABLE memory COLUMNS embedding MTree DIMENSION 1536 TYPE F32;").await?;
+    let app = Router::new()
+        .route("/health", get(server::http::health))
+        .route("/memory/search", post(server::http::memory_search))
+        .route("/memory/query", post(server::http::memory_query))
+        .route("/memory/graph", get(server::http::memory_graph))
+        .route("/agents/run", post(server::http::agents_run))
+        .route("/sync", post(server::http::sync_tier1))
+        .with_state(state);
 
-    // Initialize adk-rust agents
-    // TODO: Start async swarm orchestration
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8003));
+    tracing::info!("Cortex HTTP server listening on {}", addr);
 
-    println!("✅ AgentRAG Base Foundation Ready");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
     Ok(())
 }

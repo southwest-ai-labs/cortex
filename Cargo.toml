@@ -1,5 +1,5 @@
 [package]
-name = "agentrag"
+name = "cortex"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,8 +7,34 @@ edition = "2024"
 adk-rust = "0.3.2"
 anyhow = "1.0.102"
 async-trait = "0.1.89"
+reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 surrealdb = "3.0.2"
 thiserror = "2.0.18"
 tokio = { version = "1.50.0", features = ["full"] }
+uuid = { version = "1.8", features = ["v4"] }
+
+# HTTP Server
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# CLI arguments
+clap = { version = "4", features = ["derive"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# State management
+parking_lot = "0.12"
+
+# File traversal
+walkdir = "2"
+
+[dev-dependencies]
+proptest = "1.6.0"
