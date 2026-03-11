@@ -32,9 +32,11 @@ pub struct BeliefRelation {
 pub struct BeliefGraph {
     nodes: HashMap<String, BeliefNode>,
     relations: Vec<BeliefRelation>,
+    #[allow(dead_code)]
     adjacency: HashMap<String, HashSet<String>>,
 }
 
+#[allow(dead_code)]
 impl BeliefGraph {
     /// Crea un nuevo belief graph vacío
     pub fn new() -> Self {
@@ -48,19 +50,19 @@ impl BeliefGraph {
     /// Añade un nodo al grafo
     pub fn add_node(&mut self, concept: String, confidence: f32) {
         let id = uuid::Uuid::new_v4().to_string();
-        
+
         let node = BeliefNode {
             id: id.clone(),
             concept: concept.clone(),
             confidence,
             created_at: chrono::Utc::now(),
         };
-        
+
         self.nodes.insert(id, node);
-        
+
         // Ensure adjacency entry exists
         self.adjacency.entry(concept.clone()).or_default();
-        
+
         info!("Added node: {}", concept);
     }
 
@@ -73,7 +75,7 @@ impl BeliefGraph {
         weight: f32,
     ) {
         let id = uuid::Uuid::new_v4().to_string();
-        
+
         let relation = BeliefRelation {
             id: id.clone(),
             source: source.clone(),
@@ -81,19 +83,20 @@ impl BeliefGraph {
             relation_type: relation_type.clone(),
             weight,
         };
-        
+
         self.relations.push(relation);
-        
+
         // Update adjacency
         self.adjacency
             .entry(source.clone())
             .or_default()
             .insert(target.clone());
-        self.adjacency
-            .entry(target.clone())
-            .or_default();
-        
-        info!("Added relation: {} -> {} ({})", source, target, relation_type);
+        self.adjacency.entry(target.clone()).or_default();
+
+        info!(
+            "Added relation: {} -> {} ({})",
+            source, target, relation_type
+        );
     }
 
     /// Obtiene nodos relacionados con un concepto
@@ -131,13 +134,14 @@ impl BeliefGraph {
     pub async fn query(&self, query: &str) -> Result<Vec<BeliefNode>> {
         // Simple implementation - find nodes matching query
         let query_lower = query.to_lowercase();
-        
-        let results: Vec<BeliefNode> = self.nodes
+
+        let results: Vec<BeliefNode> = self
+            .nodes
             .values()
             .filter(|n| n.concept.to_lowercase().contains(&query_lower))
             .cloned()
             .collect();
-        
+
         Ok(results)
     }
 
@@ -147,7 +151,7 @@ impl BeliefGraph {
             "nodes": self.nodes.values().collect::<Vec<_>>(),
             "relations": self.relations,
         });
-        
+
         Ok(serde_json::to_string_pretty(&data)?)
     }
 
@@ -158,25 +162,26 @@ impl BeliefGraph {
             nodes: Vec<BeliefNode>,
             relations: Vec<BeliefRelation>,
         }
-        
+
         let data: GraphData = serde_json::from_str(json)?;
-        
+
         let mut graph = Self::new();
-        
+
         for node in data.nodes {
             let concept = node.concept.clone();
             graph.nodes.insert(node.id.clone(), node);
             graph.adjacency.entry(concept).or_default();
         }
-        
+
         for relation in data.relations {
-            graph.adjacency
+            graph
+                .adjacency
                 .entry(relation.source.clone())
                 .or_default()
                 .insert(relation.target.clone());
             graph.relations.push(relation);
         }
-        
+
         Ok(graph)
     }
 }
@@ -198,7 +203,7 @@ mod tests {
     fn test_add_node() {
         let mut graph = BeliefGraph::new();
         graph.add_node("rust".to_string(), 0.9);
-        
+
         assert!(graph.get_node("rust").is_some());
     }
 
@@ -213,7 +218,7 @@ mod tests {
             "enhances".to_string(),
             0.7,
         );
-        
+
         let related = graph.get_related("rust");
         assert!(related.contains(&"performance".to_string()));
     }
@@ -222,10 +227,10 @@ mod tests {
     fn test_serialization() {
         let mut graph = BeliefGraph::new();
         graph.add_node("test".to_string(), 0.5);
-        
+
         let json = graph.to_json().unwrap();
         let loaded = BeliefGraph::from_json(&json).unwrap();
-        
+
         assert!(loaded.get_node("test").is_some());
     }
 }
